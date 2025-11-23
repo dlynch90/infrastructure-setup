@@ -1,0 +1,118 @@
+{
+  "model": {
+    "name": "User Management User",
+    "version": "1.0.0",
+    "domain": "user_management",
+    "description": "Core user entity for the platform",
+    "created": "2025-11-23",
+    "author": "Data Architecture Team"
+  },
+  "entities": [
+    {
+      "name": "User",
+      "description": "Platform user account",
+      "attributes": [
+        {
+          "name": "id",
+          "type": "uuid",
+          "description": "Unique user identifier",
+          "required": true,
+          "primary_key": true,
+          "taxonomy_tags": ["identifier", "personal_data"]
+        },
+        {
+          "name": "email",
+          "type": "email",
+          "description": "User's email address",
+          "required": true,
+          "unique": true,
+          "taxonomy_tags": ["contact", "personal_data", "pii"]
+        },
+        {
+          "name": "first_name",
+          "type": "string",
+          "max_length": 50,
+          "description": "User's first name",
+          "required": true,
+          "taxonomy_tags": ["personal_data", "pii"]
+        },
+        {
+          "name": "last_name",
+          "type": "string",
+          "max_length": 50,
+          "description": "User's last name",
+          "required": true,
+          "taxonomy_tags": ["personal_data", "pii"]
+        },
+        {
+          "name": "status",
+          "type": "enum",
+          "values": ["active", "inactive", "suspended", "pending"],
+          "default": "pending",
+          "description": "User account status",
+          "required": true,
+          "taxonomy_tags": ["status", "lifecycle"]
+        },
+        {
+          "name": "created_at",
+          "type": "datetime",
+          "description": "Account creation timestamp",
+          "required": true,
+          "taxonomy_tags": ["timestamp", "audit"]
+        },
+        {
+          "name": "updated_at",
+          "type": "datetime",
+          "description": "Last update timestamp",
+          "required": true,
+          "taxonomy_tags": ["timestamp", "audit"]
+        }
+      ],
+      "relationships": [
+        {
+          "name": "user_roles",
+          "target_entity": "Role",
+          "type": "many_to_many",
+          "description": "User's assigned roles",
+          "taxonomy_tags": ["authorization", "security"]
+        },
+        {
+          "name": "user_permissions",
+          "target_entity": "Permission",
+          "type": "many_to_many",
+          "description": "User's granted permissions",
+          "taxonomy_tags": ["authorization", "security"]
+        }
+      ],
+      "business_rules": [
+        "Email must be unique across all users",
+        "Status transitions must follow lifecycle rules",
+        "Personal data requires consent for processing"
+      ],
+      "taxonomy_classification": {
+        "domain": "user_management",
+        "sensitivity": "high",
+        "retention": "indefinite",
+        "compliance": ["gdpr", "ccpa"]
+      }
+    }
+  ],
+  "relationships": [
+    {
+      "source": "User",
+      "target": "Role",
+      "type": "many_to_many",
+      "description": "Users can have multiple roles"
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule": "email_format",
+      "description": "Email must be valid format"
+    },
+    {
+      "rule": "required_fields",
+      "description": "All required fields must be present"
+    }
+  ]
+}

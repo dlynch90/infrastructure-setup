@@ -1,0 +1,347 @@
+name: Wrangler CI/CD Pipeline
+
+on:
+  push:
+    branches: [ main, develop ]
+  pull_request:
+    branches: [ main ]
+  workflow_dispatch:
+    inputs:
+      environment:
+        description: 'Deployment environment'
+        required: true
+        default: 'staging'
+        type: choice
+        options:
+          - staging
+          - production
+
+env:
+  NODE_VERSION: '18'
+  WRANGLER_VERSION: '3'
+
+jobs:
+  # Security and quality checks
+  security-scan:
+    name: Security & Quality Scan
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run security scans
+        run: |
+          # Secret scanning
+          if command -v trufflehog; then
+            trufflehog --no-verification --exclude-paths "node_modules,*.lock" .
+          fi
+
+          # Dependency audit
+          npm audit --audit-level high || true
+
+          # Type checking
+          npm run typecheck
+
+          # Linting
+          npm run lint || true
+
+  # Test suite
+  test:
+    name: Test Suite
+    runs-on: ubuntu-latest
+    needs: security-scan
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run tests
+        run: npm test -- --coverage --watchAll=false
+
+      - name: Upload coverage
+        if: success()
+        uses: codecov/codecov-action@v3
+        with:
+          file: ./coverage/lcov.info
+
+  # Performance testing
+  performance:
+    name: Performance Tests
+    runs-on: ubuntu-latest
+    needs: test
+    if: github.ref == 'refs/heads/main'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Build for analysis
+        run: npm run build
+
+      - name: Bundle analysis
+        run: npx --yes bundle-analyzer build/static/js/*.js --limit 500kb || true
+
+      - name: Lighthouse CI
+        run: |
+          npm install -g @lhci/cli
+          lhci autorun --config .lighthouserc.json || true
+
+  # Deploy to staging
+  deploy-staging:
+    name: Deploy to Staging
+    runs-on: ubuntu-latest
+    needs: [security-scan, test]
+    if: github.ref == 'refs/heads/main' || github.ref == 'refs/heads/develop'
+    environment: staging
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Wrangler
+        run: npm install -g wrangler@${{ env.WRANGLER_VERSION }}
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Deploy to staging
+        run: ./wrangler-cicd-automation.sh deploy staging
+
+      - name: Health check
+        run: |
+          sleep 30
+          curl -f https://staging.ai.empathyfirstmedia.com/health
+
+      - name: Tag deployment
+        run: |
+          git tag "staging/${{ github.sha }}" || true
+          git push origin "staging/${{ github.sha }}" || true
+
+  # Deploy to production (manual approval required)
+  deploy-production:
+    name: Deploy to Production
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, performance]
+    if: github.ref == 'refs/heads/main' && github.event_name == 'workflow_dispatch' && inputs.environment == 'production'
+    environment: production
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Setup Wrangler
+        run: npm install -g wrangler@${{ env.WRANGLER_VERSION }}
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Pre-deployment validation
+        run: |
+          # Additional production checks
+          npm run build
+          npm run typecheck
+
+      - name: Deploy to production
+        run: ./wrangler-cicd-automation.sh deploy production
+
+      - name: Health check
+        run: |
+          sleep 60
+          curl -f https://ai.empathyfirstmedia.com/health
+
+      - name: Performance validation
+        run: |
+          # Quick performance check
+          for i in {1..5}; do
+            curl -s -w "%{time_total}\n" https://ai.empathyfirstmedia.com/health >> response_times.txt
+            sleep 1
+          done
+
+          avg_time=$(awk '{sum+=$1} END {print sum/NR}' response_times.txt)
+          echo "Average response time: ${avg_time}s"
+
+          if (( $(echo "$avg_time > 2.0" | bc -l) )); then
+            echo "⚠️ Performance degradation detected"
+            exit 1
+          fi
+
+      - name: Create production release
+        run: |
+          git tag "production/${{ github.sha }}"
+          git push origin "production/${{ github.sha }}"
+
+          # Create GitHub release
+          gh release create "production/${{ github.sha }}" \
+            --title "Production Release ${{ github.sha }}" \
+            --notes "Automated production deployment" \
+            --latest=false
+
+  # Rollback job (manual trigger)
+  rollback:
+    name: Rollback Deployment
+    runs-on: ubuntu-latest
+    if: github.event_name == 'workflow_dispatch' && inputs.rollback == 'true'
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Wrangler
+        run: npm install -g wrangler@${{ env.WRANGLER_VERSION }}
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Rollback deployment
+        run: |
+          ENVIRONMENT="${{ inputs.environment }}"
+          VERSION_ID="${{ inputs.version_id }}"
+          ./wrangler-cicd-automation.sh rollback "$ENVIRONMENT" "$VERSION_ID"
+
+  # Monitoring and alerting
+  monitoring:
+    name: Post-Deployment Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-staging, deploy-production]
+    if: always()
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Run monitoring checks
+        run: |
+          # Check deployment status
+          echo "Checking deployment health..."
+
+          # Staging health check
+          if curl -s https://staging.ai.empathyfirstmedia.com/health | grep -q "healthy"; then
+            echo "✅ Staging: Healthy"
+          else
+            echo "❌ Staging: Unhealthy"
+          fi
+
+          # Production health check (if deployed)
+          if [ "${{ inputs.environment }}" = "production" ]; then
+            if curl -s https://ai.empathyfirstmedia.com/health | grep -q "healthy"; then
+              echo "✅ Production: Healthy"
+            else
+              echo "❌ Production: Unhealthy"
+            fi
+          fi
+
+      - name: Send notifications
+        if: failure()
+        run: |
+          echo "🚨 Deployment issues detected!"
+          # Add notification logic here (Slack, Discord, etc.)
+
+  # Cost monitoring
+  cost-monitoring:
+    name: Cost Monitoring
+    runs-on: ubuntu-latest
+    needs: [deploy-production]
+    if: github.event_name == 'schedule' || (github.ref == 'refs/heads/main' && github.event_name == 'push')
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Wrangler
+        run: npm install -g wrangler@${{ env.WRANGLER_VERSION }}
+
+      - name: Setup 1Password CLI
+        uses: 1password/setup-op-cli@v1
+
+      - name: Authenticate with 1Password
+        run: |
+          echo "${{ secrets.OP_SERVICE_ACCOUNT_TOKEN }}" | op signin --service-account-token-stdin --account "${{ secrets.OP_ACCOUNT }}"
+
+      - name: Monitor costs
+        run: |
+          echo "💰 Cost Monitoring Report"
+          echo "========================"
+
+          # Get usage data
+          ./wrangler-workflow-automation.sh monitor
+
+          # Set budget alerts
+          MONTHLY_BUDGET=100
+          CURRENT_COST=$(wrangler usage --period 30d --json 2>/dev/null | jq -r '.cost // 0' 2>/dev/null || echo "0")
+
+          if (( $(echo "$CURRENT_COST > $MONTHLY_BUDGET * 0.8" | bc -l 2>/dev/null || echo "0") )); then
+            echo "⚠️ Cost threshold exceeded: $${CURRENT_COST}/$${MONTHLY_BUDGET}"
+          fi

@@ -1,0 +1,122 @@
+{
+  "name": "empathy-agency-ai-platform",
+  "version": "1.0.0",
+  "description": "AI-powered platform for Empathy First Media Agency with multi-modal capabilities",
+  "main": "src/index.ts",
+  "scripts": {
+    "dev": "./dev-workflow.sh dev",
+    "dev:setup": "./dev-workflow.sh setup",
+    "dev:status": "./dev-workflow.sh status",
+    "deploy": "./dev-workflow.sh deploy production",
+    "deploy:staging": "./dev-workflow.sh deploy staging",
+    "deploy:development": "./dev-workflow.sh deploy development",
+    "build": "wrangler deploy --dry-run",
+    "test": "vitest",
+    "test:watch": "vitest --watch",
+    "test:ui": "vitest --ui",
+    "lint": "eslint src/**/*.ts",
+    "lint:fix": "eslint src/**/*.ts --fix",
+    "format": "prettier --write src/**/*.{ts,js,json}",
+    "typecheck": "tsc --noEmit",
+    "db:migrate": "wrangler d1 execute agency-ai-sessions-prod --file=src/schema.sql --config wrangler.toml",
+    "db:migrate:dev": "wrangler d1 execute agency-ai-sessions-dev --file=src/schema.sql --config wrangler.development.toml",
+    "db:migrate:staging": "wrangler d1 execute agency-ai-sessions-staging --file=src/schema.sql --config wrangler.staging.toml",
+    "db:seed": "node scripts/seed.js",
+    "monitoring": "node monitoring.js",
+    "analytics": "node scripts/analytics.js",
+    "cf:login": "wrangler login",
+    "cf:logout": "wrangler logout",
+    "cf:whoami": "wrangler whoami"
+  },
+  "dependencies": {
+    "@cloudflare/ai": "^1.2.2",
+    "@cloudflare/workers-types": "^4.20251121.0",
+    "ai": "^5.0.100",
+    "drizzle-kit": "^0.31.7",
+    "drizzle-orm": "^0.44.7",
+    "hono": "^4.10.6",
+    "workers-ai-provider": "^2.0.0",
+    "zod": "^4.1.12"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.1",
+    "@typescript-eslint/eslint-plugin": "^8.47.0",
+    "@typescript-eslint/parser": "^8.47.0",
+    "eslint": "^9.39.1",
+    "eslint-config-prettier": "^10.1.8",
+    "husky": "^9.1.7",
+    "lint-staged": "^16.2.7",
+    "prettier": "^3.6.2",
+    "typescript": "^5.9.3",
+    "vitest": "^4.0.13",
+    "wrangler": "^4.50.0"
+  },
+  "engines": {
+    "node": ">=18.0.0"
+  },
+  "keywords": [
+    "ai",
+    "cloudflare",
+    "workers",
+    "agency",
+    "content-generation",
+    "rag",
+    "multimodal"
+  ],
+  "author": "Empathy First Media Agency",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/empathyfirstmedia/ai-platform"
+  },
+  "bugs": {
+    "url": "https://github.com/empathyfirstmedia/ai-platform/issues"
+  },
+  "homepage": "https://ai.empathyfirstmedia.com",
+  "eslintConfig": {
+    "extends": [
+      "eslint:recommended",
+      "@typescript-eslint/recommended",
+      "prettier"
+    ],
+    "parser": "@typescript-eslint/parser",
+    "plugins": [
+      "@typescript-eslint"
+    ],
+    "env": {
+      "node": true,
+      "es2022": true
+    },
+    "rules": {
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          "argsIgnorePattern": "^_"
+        }
+      ],
+      "@typescript-eslint/explicit-function-return-type": "off",
+      "@typescript-eslint/no-explicit-any": "warn"
+    }
+  },
+  "prettier": {
+    "semi": true,
+    "trailingComma": "es5",
+    "singleQuote": true,
+    "printWidth": 100,
+    "tabWidth": 2
+  },
+  "lint-staged": {
+    "*.{ts,js}": [
+      "eslint --fix",
+      "prettier --write"
+    ],
+    "*.{json,md}": [
+      "prettier --write"
+    ]
+  },
+  "husky": {
+    "hooks": {
+      "pre-commit": "lint-staged"
+    }
+  }
+}

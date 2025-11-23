@@ -1,0 +1,119 @@
+{
+  "taxonomy": {
+    "name": "Empathy First Media Business Taxonomy",
+    "version": "1.0.0",
+    "description": "Unified taxonomy for data classification and governance",
+    "created": "2025-11-23",
+    "author": "Data Governance Team"
+  },
+  "domains": [
+    {
+      "name": "user_management",
+      "description": "User accounts, profiles, and authentication",
+      "entities": ["User", "Role", "Permission", "Session"],
+      "data_sensitivity": "high",
+      "compliance_requirements": ["gdpr", "ccpa"]
+    },
+    {
+      "name": "product_catalog",
+      "description": "Products, categories, and pricing",
+      "entities": ["Product", "Category", "Price", "Inventory"],
+      "data_sensitivity": "medium",
+      "compliance_requirements": ["commercial"]
+    },
+    {
+      "name": "order_processing",
+      "description": "Orders, payments, and transactions",
+      "entities": ["Order", "Payment", "Transaction", "Invoice"],
+      "data_sensitivity": "high",
+      "compliance_requirements": ["pci_dss", "gdpr"]
+    },
+    {
+      "name": "analytics_reporting",
+      "description": "Business intelligence and reporting",
+      "entities": ["Report", "Dashboard", "Metric", "KPI"],
+      "data_sensitivity": "medium",
+      "compliance_requirements": ["internal"]
+    }
+  ],
+  "data_types": [
+    {
+      "name": "uuid",
+      "description": "Universally unique identifier",
+      "format": "^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$",
+      "taxonomy_tags": ["identifier"]
+    },
+    {
+      "name": "email",
+      "description": "Email address",
+      "format": "^[a-zA-Z0-9._%+-]+@[a-zA-Z0-9.-]+\\.[a-zA-Z]{2,}$",
+      "taxonomy_tags": ["contact", "personal_data", "pii"]
+    },
+    {
+      "name": "phone",
+      "description": "Phone number",
+      "format": "^\\+?[1-9]\\d{1,14}$",
+      "taxonomy_tags": ["contact", "personal_data"]
+    },
+    {
+      "name": "currency",
+      "description": "Monetary amount",
+      "format": "^\\d+(\\.\\d{2})?$",
+      "taxonomy_tags": ["financial_data"]
+    }
+  ],
+  "taxonomy_tags": {
+    "data_classification": [
+      "public", "internal", "confidential", "restricted"
+    ],
+    "data_category": [
+      "personal_data", "financial_data", "health_data", "business_critical"
+    ],
+    "compliance": [
+      "gdpr", "ccpa", "hipaa", "pci_dss", "sox"
+    ],
+    "entity_type": [
+      "master_data", "transactional_data", "reference_data", "metadata"
+    ],
+    "lifecycle": [
+      "active", "archived", "deprecated", "deleted"
+    ]
+  },
+  "governance_rules": [
+    {
+      "rule_id": "retention_personal_data",
+      "description": "Personal data must be retained for maximum 7 years",
+      "condition": "taxonomy_tags contains 'personal_data'",
+      "action": "enforce_retention_policy",
+      "retention_period": "7_years"
+    },
+    {
+      "rule_id": "encryption_sensitive_data",
+      "description": "Sensitive data must be encrypted at rest and in transit",
+      "condition": "data_sensitivity in ['high', 'restricted']",
+      "action": "enforce_encryption",
+      "encryption_required": true
+    },
+    {
+      "rule_id": "audit_logging",
+      "description": "All data modifications must be logged",
+      "condition": "entity_type in ['master_data', 'transactional_data']",
+      "action": "enable_audit_logging",
+      "log_retention": "7_years"
+    }
+  ],
+  "validation_rules": [
+    {
+      "rule_name": "required_taxonomy_tags",
+      "description": "All entities must have taxonomy classification",
+      "severity": "error",
+      "validation_query": "exists(taxonomy_classification)"
+    },
+    {
+      "rule_name": "compliance_mapping",
+      "description": "Compliance requirements must be specified for sensitive data",
+      "severity": "warning",
+      "validation_query": "data_sensitivity = 'high' implies exists(compliance_requirements)"
+    }
+  ]
+}

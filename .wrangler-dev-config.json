@@ -1,0 +1,66 @@
+{
+  "persistTo": "./.wrangler-dev",
+  "localPersistencePath": "./.wrangler-dev/local",
+  "remotePersistencePath": "./.wrangler-dev/remote",
+  "experimental": {
+    "enableDurableObjects": true,
+    "enableQueues": true,
+    "enableVectorize": true,
+    "enableD1": true,
+    "enableR2": true,
+    "enableKV": true
+  },
+  "dev": {
+    "port": 8787,
+    "localProtocol": "http",
+    "upstreamProtocol": "https",
+    "host": "localhost",
+    "cors": {
+      "allowedOrigins": [
+        "*"
+      ],
+      "allowCredentials": true,
+      "allowMethods": [
+        "GET",
+        "POST",
+        "PUT",
+        "DELETE",
+        "OPTIONS"
+      ],
+      "allowHeaders": [
+        "*"
+      ]
+    }
+  },
+  "build": {
+    "command": "npm run build",
+    "cwd": ".",
+    "watch": [
+      "src/**/*",
+      "package.json"
+    ]
+  },
+  "miniflare": {
+    "logLevel": "debug",
+    "sourceMaps": true,
+    "watch": true,
+    "port": 8787,
+    "host": "localhost",
+    "https": false,
+    "durableObjects": {
+      "persist": true
+    },
+    "kv": {
+      "persist": true
+    },
+    "d1": {
+      "persist": true
+    },
+    "r2": {
+      "persist": true
+    },
+    "queues": {
+      "persist": true
+    }
+  }
+}

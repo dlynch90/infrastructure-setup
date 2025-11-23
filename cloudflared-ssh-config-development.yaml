@@ -1,0 +1,29 @@
+# Cloudflare Tunnel SSH Configuration for Development
+tunnel: ssh-access-development
+credentials-file: /etc/cloudflared/tunnel-development.json
+
+ingress:
+  # SSH access via Access for Infrastructure
+  - hostname: ssh.dev.empathyfirstmedia.com
+    service: ssh://localhost:22
+    originRequest:
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      tcpKeepAlive: 30s
+      keepAliveTimeout: 90s
+      keepAliveConnections: 100
+
+  # Database access for development
+  - hostname: db.dev.empathyfirstmedia.com
+    service: tcp://localhost:5432
+    originRequest:
+      connectTimeout: 30s
+
+  # Health check
+  - hostname: health.dev.empathyfirstmedia.com
+    service: http://localhost:8787/health
+
+  - service: http_status:404
+
+# SSH Certificate Authority (update with your Cloudflare service token)
+# service_token: op://Development/SSH_CA_Service_Token_Development/token

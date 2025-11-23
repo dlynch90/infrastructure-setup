@@ -1,0 +1,79 @@
+name = "empathy-agency-ai-prod"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Production AI binding
+[ai]
+binding = "AI"
+
+# Production database
+[[d1_databases]]
+binding = "DB"
+database_name = "agency-ai-sessions-prod"
+database_id = "prod-database-id"
+
+# Production vectorize index
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "agency-knowledge-base-prod"
+
+# Production R2 bucket
+[[r2_buckets]]
+binding = "R2_CONTENT"
+bucket_name = "agency-generated-content-prod"
+
+# Production KV namespace
+[[kv_namespaces]]
+binding = "KV_CACHE"
+id = "prod-kv-namespace-id"
+preview_id = "prod-preview-id"
+
+# Production queues
+[[queues.producers]]
+binding = "AI_QUEUE"
+queue_name = "agency-ai-jobs-prod"
+
+[[queues.consumers]]
+queue = "agency-ai-jobs-prod"
+max_concurrency = 20
+
+# Production Durable Objects
+[[durable_objects.bindings]]
+name = "USER_SESSIONS"
+class_name = "UserSessionDO"
+
+[[durable_objects.bindings]]
+name = "AI_CONVERSATIONS"
+class_name = "AIConversationDO"
+
+# Production service bindings
+[[services]]
+binding = "AI_SERVICE"
+service = "ai-worker-prod"
+
+[[services]]
+binding = "AUTH_SERVICE"
+service = "auth-worker-prod"
+
+# Production environment variables (merged)
+[vars]
+ENVIRONMENT = "production"
+AI_GATEWAY_ENABLED = "true"
+RATE_LIMIT_REQUESTS_PER_MINUTE = "100"
+RATE_LIMIT_TOKENS_PER_HOUR = "10000"
+ENABLE_CIRCUIT_BREAKER = "true"
+CIRCUIT_BREAKER_TIMEOUT = "30"
+HEALTH_CHECK_INTERVAL = "60"
+AUTO_SCALING_ENABLED = "true"
+MAX_CONCURRENT_REQUESTS = "1000"
+LOG_LEVEL = "warn"
+
+# Simplified configuration for core functionality
+
+# Secrets (set via wrangler secret put)
+# CLOUDFLARE_API_TOKEN
+# OPENAI_API_KEY (optional fallback)
+# ANTHROPIC_API_KEY (optional fallback)
+# SSH_CERTIFICATE_PUBLIC_KEY
+# TUNNEL_CREDENTIALS

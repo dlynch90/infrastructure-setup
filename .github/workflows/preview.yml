@@ -1,0 +1,63 @@
+name: Preview Deployment
+
+on:
+  pull_request:
+    branches: [main, staging, develop]
+    types: [opened, synchronize, reopened, closed]
+
+env:
+  NODE_VERSION: '18'
+
+jobs:
+  preview:
+    name: Deploy Preview
+    runs-on: ubuntu-latest
+    if: github.event.action != 'closed'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Deploy preview
+        run: |
+          # Create preview deployment
+          DEPLOYMENT_URL=$(wrangler deploy --config wrangler.development.toml --name "preview-${{ github.event.number }}" --compatibility-date 2024-01-01)
+
+          # Comment on PR with preview URL
+          if [ -n "$DEPLOYMENT_URL" ]; then
+            gh pr comment ${{ github.event.number }} --body "🚀 Preview deployment ready: $DEPLOYMENT_URL"
+          fi
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+  cleanup:
+    name: Cleanup Preview
+    runs-on: ubuntu-latest
+    if: github.event.action == 'closed'
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Install Wrangler
+        run: npm install -g wrangler
+
+      - name: Cleanup preview deployment
+        run: |
+          # Delete preview deployment
+          wrangler delete --name "preview-${{ github.event.number }}"
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}

@@ -1,0 +1,10 @@
+node_modules/
+.next/
+.env*
+*.log
+.git/
+.github/
+README.md
+dev-workflow*.sh
+*.db
+.gcloudignore

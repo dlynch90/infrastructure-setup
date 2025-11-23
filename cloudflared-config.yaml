@@ -1,0 +1,63 @@
+# Cloudflare Tunnel Configuration for Production Scaling
+# This configuration provides secure, scalable access to your infrastructure
+
+tunnel: empathy-agency-tunnel
+credentials-file: /etc/cloudflared/tunnel-credentials.json
+
+# Warp routing for SSH and internal services
+warp-routing:
+  enabled: true
+
+# Ingress rules for different services
+ingress:
+  # SSH access through Access for Infrastructure
+  - hostname: ssh.agency.internal
+    service: ssh://localhost:22
+    originRequest:
+      connectTimeout: 30s
+      tlsTimeout: 30s
+      tcpKeepAlive: 30s
+      keepAliveTimeout: 90s
+      keepAliveConnections: 100
+
+  # Database access (if needed for development)
+  - hostname: db.agency.internal
+    service: tcp://localhost:5432
+    originRequest:
+      connectTimeout: 30s
+
+  # Internal API access
+  - hostname: api.agency.internal
+    service: https://localhost:8787
+    originRequest:
+      noTLSVerify: true
+
+  # Health check endpoint
+  - hostname: health.agency.internal
+    service: http://localhost:8787/health
+
+  # Catch-all for 404
+  - service: http_status:404
+
+# Log configuration for monitoring
+log:
+  level: info
+  file: /var/log/cloudflared/tunnel.log
+
+# Metrics for monitoring and scaling
+metrics: 127.0.0.1:8080
+
+# Protocol configuration for performance
+protocol: quic
+
+# Connection pooling for better performance
+pool-size: 100
+
+# Compression for faster data transfer
+compression-quality: 6
+
+# Automatic updates
+autoupdate-freq: 24h0m0s
+
+# Edge IP version preference
+edge-ip-version: auto

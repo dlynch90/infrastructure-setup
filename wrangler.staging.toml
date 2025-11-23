@@ -1,0 +1,113 @@
+name = "empathy-agency-ai-staging"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Staging environment configuration
+[ai]
+binding = "AI"
+
+# Staging database (separate from production)
+[[d1_databases]]
+binding = "DB"
+database_name = "agency-ai-sessions-staging"
+database_id = "staging-database-id"
+
+# Staging vectorize index
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "agency-knowledge-base-staging"
+
+# Staging R2 bucket
+[[r2_buckets]]
+binding = "R2_CONTENT"
+bucket_name = "agency-generated-content-staging"
+
+# Staging KV namespace
+[[kv_namespaces]]
+binding = "KV_CACHE"
+id = "staging-kv-namespace-id"
+preview_id = "staging-preview-id"
+
+# Staging queues
+[[queues.producers]]
+binding = "AI_QUEUE"
+queue_name = "agency-ai-jobs-staging"
+
+[[queues.consumers]]
+queue_name = "agency-ai-jobs-staging"
+max_concurrency = 10
+
+# Staging Durable Objects
+[[durable_objects.bindings]]
+name = "USER_SESSIONS"
+class_name = "UserSessionDO"
+
+[[durable_objects.bindings]]
+name = "AI_CONVERSATIONS"
+class_name = "AIConversationDO"
+
+# Service bindings for staging
+[[services]]
+binding = "AI_SERVICE"
+service = "ai-worker-staging"
+
+[[services]]
+binding = "AUTH_SERVICE"
+service = "auth-worker-staging"
+
+# Environment variables for staging
+[vars]
+ENVIRONMENT = "staging"
+AI_GATEWAY_ENABLED = "true"
+RATE_LIMIT_REQUESTS_PER_MINUTE = "500"
+RATE_LIMIT_TOKENS_PER_HOUR = "25000"
+ENABLE_CIRCUIT_BREAKER = "true"
+CIRCUIT_BREAKER_TIMEOUT = "30"
+HEALTH_CHECK_INTERVAL = "60"
+LOG_LEVEL = "info"
+
+# Staging analytics
+[analytics_engine_datasets]
+dataset = "ai-platform-analytics-staging"
+
+# Staging zone binding
+[[zones]]
+binding = "STAGING_ZONE"
+zone_name = "staging.empathyfirstmedia.com"
+zone_id = "staging-zone-id"
+
+# Staging security rules (production-like but monitored)
+[[rules]]
+type = "ES"
+expression = "(http.request.uri.path contains \"/api/ai/\")"
+description = "Rate limit AI API endpoints - Staging"
+
+[[rules]]
+type = "ES"
+expression = "(http.request.uri.path contains \"/api/ai/generate\")"
+description = "Stricter rate limiting for generation endpoints - Staging"
+
+[[rules]]
+type = "ES"
+expression = "http.request.method == \"POST\" && http.request.uri.path contains \"/api/auth/\""
+description = "Rate limit authentication endpoints - Staging"
+
+# Circuit breaker for staging
+[[rules]]
+type = "ES"
+expression = "(http.request.uri.path contains \"/api/external/\")"
+description = "Circuit breaker for external API calls - Staging"
+
+# Staging-specific monitoring rules
+[[rules]]
+type = "ES"
+expression = "(http.request.uri.path contains \"/staging\")"
+description = "Monitor staging-specific endpoints"
+
+# Secrets for staging
+# CLOUDFLARE_API_TOKEN
+# OPENAI_API_KEY
+# ANTHROPIC_API_KEY
+# STAGING_DB_PASSWORD
+# STAGING_REDIS_URL

@@ -1,0 +1,97 @@
+name = "empathy-agency-ai-dev"
+main = "src/index.ts"
+compatibility_date = "2024-01-01"
+compatibility_flags = ["nodejs_compat"]
+
+# Local development configuration
+[build]
+command = "npm run build"
+
+# AI binding for development
+[ai]
+binding = "AI"
+
+# Development database (isolated from production)
+[[d1_databases]]
+binding = "DB"
+database_name = "agency-ai-sessions-dev"
+database_id = "dev-database-id"
+
+# Development vectorize index
+[[vectorize]]
+binding = "VECTORIZE"
+index_name = "agency-knowledge-base-dev"
+
+# Development R2 bucket
+[[r2_buckets]]
+binding = "R2_CONTENT"
+bucket_name = "agency-generated-content-dev"
+
+# Development KV namespace
+[[kv_namespaces]]
+binding = "KV_CACHE"
+id = "dev-kv-namespace-id"
+preview_id = "dev-preview-id"
+
+# Development queues
+[[queues.producers]]
+binding = "AI_QUEUE"
+queue_name = "agency-ai-jobs-dev"
+
+[[queues.consumers]]
+queue_name = "agency-ai-jobs-dev"
+max_concurrency = 5
+
+# Development Durable Objects
+[[durable_objects.bindings]]
+name = "USER_SESSIONS"
+class_name = "UserSessionDO"
+
+[[durable_objects.bindings]]
+name = "AI_CONVERSATIONS"
+class_name = "AIConversationDO"
+
+# Environment variables for development
+[vars]
+ENVIRONMENT = "development"
+DEBUG = "true"
+AI_GATEWAY_ENABLED = "true"
+RATE_LIMIT_REQUESTS_PER_MINUTE = "1000"  # Higher limits for development
+RATE_LIMIT_TOKENS_PER_HOUR = "50000"
+ENABLE_CIRCUIT_BREAKER = "false"  # Disabled for easier debugging
+LOG_LEVEL = "debug"
+
+# Development analytics
+[analytics_engine_datasets]
+dataset = "ai-platform-analytics-dev"
+
+# Development-specific rules (less restrictive)
+[[rules]]
+type = "ES"
+expression = "(http.request.uri.path contains \"/api/ai/\")"
+description = "Rate limit AI API endpoints - Development"
+
+[[rules]]
+type = "ES"
+expression = "(http.request.uri.path contains \"/debug\")"
+description = "Allow debug endpoints in development"
+
+# Local development settings
+[dev]
+port = 8787
+local_protocol = "http"
+upstream_protocol = "https"
+
+# Persistence for local development
+persist_to = "./.wrangler-dev"
+
+# Enable experimental features for development
+[experimental]
+enable_durable_objects = true
+enable_queues = true
+
+# Secrets for development (use wrangler secret put)
+# CLOUDFLARE_API_TOKEN
+# OPENAI_API_KEY
+# ANTHROPIC_API_KEY
+# DEVELOPMENT_DB_PASSWORD
